@@ -1,0 +1,27 @@
+html.ios-gt-8 .navbar .center{
+  font-weight: normal;
+}
+.bell{
+  color: #252323bd;
+}
+.item-title{
+  width: 100%;
+}
+.list-title-text{
+  font-weight: normal !important;
+  padding: 2px 0px 10px 0px;
+}
+.list-item-context{
+  font-weight: normal !important;
+  font-size: 14px !important;
+  color: #9d9aa0;
+  padding: 2px 0px 5px 0px;
+}
+.list-item-user-head{
+  border-radius: 5px;
+}
+.list-tile-time{
+  float: right;
+  padding-right: 1px;
+  color: #9d9aa0;
+}

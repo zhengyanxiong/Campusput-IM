@@ -1,0 +1,4 @@
+export const INIT_USER = 'INIT_USER'
+export const INIT_CHAT_USER = 'INIT_CHAT_USER'
+export const INIT_WEBSOCKET = 'INIT_WEBSOCKET'
+export const INIT_USERINFO = 'INIT_USERINFO'

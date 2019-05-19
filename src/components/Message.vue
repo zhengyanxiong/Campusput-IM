@@ -1,5 +1,8 @@
 <template>
   <f7-page pull-to-refresh @ptr:refresh="onRefresh" toolbar-fixed navbar-fixed>
+    <audio id="audio" preload="auto" controls loop v-show="false">
+      <source src="../assets/634.wav" type="audio/ogg" />
+    </audio>
     <f7-navbar :title="chatUser.username" back-link="返回" sliding></f7-navbar>
 
     <f7-messages :init="true" :scrollMessages="scrollAuto" ref="f7messages">
@@ -22,7 +25,8 @@
 
 <script>
 import {mapState} from 'vuex'
-/* import {IMG_URL} from '../api/url' */
+// eslint-disable-next-line no-unused-vars
+import {appUploadPic, uploadAvatarIsCompleted, appPicUploadUrl} from '../util/app'
 import singleChat from '../websocket/msgObj'
 import {saveMessage, getMessage} from '../api/api'
 import {isEmpty, formatDate} from '../util/utils'
@@ -44,11 +48,16 @@ export default {
       scrollAuto: true,
       content: '',
       messages: [],
-      uploadImgUrl: ''
+      uploadImgUrl: '',
+      photoBrowserCount: 0,
+      currentTime: '',
+      lastRunTime: '',
+      isPlaying: false
     }
   },
   mounted () {
     var _self = this
+    window.uploadAvatarIsCompleted = _self.uploadAvatarIsCompleted
     this.websocket.onmessage = function (event) {
       console.log('接收到websocket的内容：', event)
       var result = JSON.parse(event.data)
@@ -65,11 +74,12 @@ export default {
           _self.messages.push(_self.generateMessage('', _self.user, 'sent'))
           _self.$refs.f7messages.appendMessage(_self.generateImgMessage("<img src='" + obj.smallImg + "'  class='message-img'>", _self.user, 'sent'))
           $('.message-img').click(() => {
-            _self.onMessageClick(_self.imgUrl + '/' + obj.message)
+            _self.onMessageClick(obj.message)
           })
         }
       } else if (result.code === 101) {
         _self.$f7.alert(null, '有新的消息了')
+        _self.play()
         // 接收到消息
         let message = result.data
         let content = message.message
@@ -80,9 +90,9 @@ export default {
         } else {
           // 图片
           _self.messages.push(_self.generateMessage('', _self.chatUser, 'received'))
-          _self.$refs.f7messages.appendMessage(_self.generateImgMessage("<img src='" + _self.imgUrl + '/' + message.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
+          _self.$refs.f7messages.appendMessage(_self.generateImgMessage("<img src='" + message.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
           $('.message-img').click(() => {
-            _self.onMessageClick(_self.imgUrl + '/' + message.message)
+            _self.onMessageClick(message.message)
           })
         }
       } else {
@@ -95,10 +105,12 @@ export default {
   methods: {
     openImg () {
       /* document.getElementById('uploadImg').click() */
-      window.appImageObj.showImageDialog(flag)
+      appUploadPic('rr')
     },
     uploadAvatarIsCompleted (url) {
       this.uploadImgUrl = url
+      this.content = url
+      this.onSubmit('img')
     },
     uploadMessageImg (evnet) {
       let _self = this
@@ -126,11 +138,10 @@ export default {
         console.log('自己呀')
         // 自己的聊天窗口
         if (type === 'img') {
-          this.$refs.f7messages.appendMessage(this.generateImgMessage("<img src='" + this.content.split(';')[1] + "' class='message-img'>", this.user, 'sent'))
+          this.$refs.f7messages.appendMessage(this.generateImgMessage("<img src='" + this.uploadImgUrl + "' class='message-img'>", this.user, 'sent'))
           var _self = this
-          let bigImg = this.content.split(';')[0]
           $('.message-img').click(() => {
-            _self.onMessageClick(this.imgUrl + '/' + bigImg)
+            _self.onMessageClick(this.uploadImgUrl)
           })
         } else {
           this.$refs.f7messages.appendMessage(this.generateMessage(this.content, this.user, 'sent'))
@@ -141,7 +152,7 @@ export default {
         if (type === 'img') {
           // eslint-disable-next-line new-cap
           obj = new singleChat(
-            2, this.content.split(';')[0], this.user.userId, this.chatUser.userId, this.content.split(';')[1]
+            2, this.uploadImgUrl, this.user.userId, this.chatUser.userId, this.content
           )
         } else {
           // eslint-disable-next-line new-cap
@@ -213,15 +224,15 @@ export default {
                   // 图片
                   if (n.fromUserId === _self.user.userId) {
                     _self.messages.push(_self.generateMessage('', _self.user, 'sent', n.createTime))
-                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + _self.imgUrl + '/' + n.smallImg + "'  class='message-img'>", _self.user, 'sent'))
+                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + n.smallImg + "'  class='message-img'>", _self.user, 'sent'))
                     $('.message-img').click(() => {
-                      _self.onMessageClick(_self.imgUrl + '/' + n.message)
+                      _self.onMessageClick(n.message)
                     })
                   } else {
                     _self.messages.push(_self.generateMessage('', _self.chatUser, 'received', n.createTime))
-                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + _self.imgUrl + '/' + n.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
+                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + n.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
                     $('.message-img').click(() => {
-                      _self.onMessageClick(_self.imgUrl + '/' + n.message)
+                      _self.onMessageClick(n.message)
                     })
                   }
                 }
@@ -242,15 +253,15 @@ export default {
                   // 图片
                   if (n.fromUserId === _self.user.userId) {
                     _self.messages.unshift(_self.generateMessage('', _self.user, 'sent', n.createTime))
-                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + _self.imgUrl + '/' + n.smallImg + "'  class='message-img'>", _self.user, 'sent'))
+                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + n.smallImg + "'  class='message-img'>", _self.user, 'sent'))
                     $('.message-img').click(() => {
-                      _self.onMessageClick(_self.imgUrl + '/' + n.message)
+                      _self.onMessageClick(n.message)
                     })
                   } else {
                     _self.messages.unshift(_self.generateMessage('', _self.chatUser, 'received', n.createTime))
-                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + _self.imgUrl + '/' + n.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
+                    _self.$refs.f7messages.prependMessage(_self.generateImgMessage("<img src='" + n.smallImg + "'  class='message-img'>", _self.chatUser, 'received'))
                     $('.message-img').click(() => {
-                      _self.onMessageClick(_self.imgUrl + '/' + n.message)
+                      _self.onMessageClick(n.message)
                     })
                   }
                 }
@@ -286,6 +297,30 @@ export default {
     formatDate (time) {
       var date = new Date(time)
       return formatDate(date, 'yyyy-MM-dd hh:mm:ss')
+    },
+    play () {
+      this.lastRunTime = Date.now()
+      let audio = document.querySelector('#audio')
+      if (!this.isPlaying) {
+        audio.play()
+        this.isPlaying = true
+      }
+      let timeOut = setTimeout(() => {
+        this.stop(timeOut)
+      }, 10000)
+    },
+    stop (timeOut) {
+      this.currentTime = Date.now()
+      let audio = document.querySelector('#audio')
+      if (this.currentTime - this.lastRunTime < 10000) {
+      } else {
+        if (this.isPlaying) {
+          audio.currentTime = 0
+          audio.pause()
+          this.isPlaying = false
+        }
+      }
+      clearTimeout(timeOut)
     }
   },
   filters: {
@@ -296,6 +331,8 @@ export default {
 }
 </script>
 
-<style scoped>
-
+<style>
+  .message-img{
+    width: 150px !important;
+  }
 </style>

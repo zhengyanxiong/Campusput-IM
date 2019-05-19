@@ -1,5 +1,5 @@
 let socket = function ($f7, token) {
-  let url = 'ws://127.0.0.1:8082/'
+  let url = 'ws://192.168.1.6:8082/'
   let ws = null
   function initWs ($f7, token) {
     if (window['WebSocket']) {

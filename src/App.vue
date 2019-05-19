@@ -17,8 +17,7 @@
           </f7-list>
 
           <f7-list media-list contacts>
-
-            <f7-list-group v-for="(group) in contacts">
+            <f7-list-group v-for="group in contacts">
               <f7-list-item v-for="item in group"
                           :media="getContactsMedia(item.headImag)"
                           :title="getContactsTitle(item.username)"
@@ -60,7 +59,7 @@ export default {
   mounted () {
     this.$nextTick(() => {
       this.$f7.showIndicator()
-      if (isEmpty(Cookies.get('token'))) {
+      if (isEmpty(Cookies.get('app_member_token'))) {
         this.$f7.hideIndicator()
         this.$f7.alert('请登陆', null)
       } else {
@@ -68,7 +67,7 @@ export default {
         // eslint-disable-next-line no-unused-vars
         let param = {
           params: {
-            token: Cookies.get('token')
+            token: Cookies.get('app_member_token')
           }
         }
         getByToken(param).then(data => {
@@ -87,7 +86,7 @@ export default {
   methods: {
     initApp () {
       // eslint-disable-next-line new-cap
-      let soc = new socket(this.$f7, Cookies.get('token'))
+      let soc = new socket(this.$f7, Cookies.get('app_member_token'))
       let webSocket = soc.getWebSocket()
       webSocket.onopen = function () {
         console.log('webscoket连接')

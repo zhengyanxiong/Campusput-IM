@@ -4,26 +4,42 @@
       <f7-pages>
         <f7-page toolbar-fixed navbar-fixed>
           <f7-navbar :title="activeTab">
-            <f7-nav-right>
-              <f7-link><i class="f7-icons bell">bell_fill</i></f7-link>
-            </f7-nav-right>
           </f7-navbar>
-          <f7-list media-list>
+          <!--<f7-list media-list>
             <f7-list-item :media="getActiveNoticeMedia(1)"
                           :title="getActiveNoticeTitle(1)"
-                          :subtitle="getActiveNoticeSubtitle(1)"
+                          subtitle="<div class='item-subtitle list-item-context'>{{activeTitle}}</div>"
                           :text="getActiveNoticeTime(1)">
             </f7-list-item>
-          </f7-list>
+          </f7-list>-->
+          <div class="card-content">
+            <div class="list-block media-list">
+              <ul>
+                <li class="item-content">
+                  <div class="item-media">
+                    <img :src="activeImage" width="44">
+                  </div>
+                  <div class="item-inner">
+                    <div class="item-title-row">
+                      <div class='item-title list-title-text'>通知助手</div>
+                      <f7-badge color="red" v-show="activeCountShow">{{activeCount}}</f7-badge>
+                    </div>
+                    <div class='item-subtitle list-item-context'>{{activeTitle}} {{ activeContent}}</div>
+                    <div class='item-subtitle list-item-context'>{{activeCreatTime}}</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
 
           <f7-list media-list contacts>
             <f7-list-group v-for="group in contacts">
               <f7-list-item v-for="item in group"
-                          :media="getContactsMedia(item.headImag)"
-                          :title="getContactsTitle(item.username)"
-                          :subtitle="getContactsSubtitle(1)"
-                          :link="toMessage()"
-                          @click="setChatUser(item)">
+                            :media="getContactsMedia(item.user.headImag)"
+                            :title="getContactsTitle(item.user.username)"
+                            :subtitle="getContactsSubtitle(1)"
+                            :link="toMessage()"
+                            @click="setChatUser(item.user)">
               </f7-list-item>
             </f7-list-group>
           </f7-list>
@@ -31,6 +47,7 @@
         </f7-page>
       </f7-pages>
     </f7-view>
+
   </f7-views>
 </template>
 
@@ -38,8 +55,10 @@
 import Cookies from 'cookies-js'
 import axiosIns from './api/axios-ins'
 import socket from './websocket/socket'
-import {getByToken, getUserList} from './api/api'
-import {isEmpty} from '@/util/utils'
+import mqtt from './mqtt/mqtt'
+import {getByToken, getByUserID, getUserList, getNewActivity} from './api/api'
+import {isEmpty, getQueryString} from '@/util/utils'
+import {sendNotification1} from './util/app'
 import {mapState} from 'vuex'
 import {groupBy} from 'lodash'
 
@@ -47,13 +66,21 @@ export default {
   data () {
     return {
       activeTab: '消息中心',
-      contacts: []
+      contacts: [],
+      activeContent: '',
+      activeDate: '',
+      activeTitle: '',
+      activeCount: null,
+      activeCountShow: false,
+      activeCreatTime: '',
+      activeImage: require('./assets/notice.png')
     }
   },
   computed: {
     ...mapState({
       user: state => state.user,
-      websocket: state => state.websocket
+      websocket: state => state.websocket,
+      mqtt: state => state.mqtt
     })
   },
   mounted () {
@@ -94,7 +121,46 @@ export default {
       webSocket.onerror = function () {
         this.$f7.alert('连接通讯服务器失败，请重新登录或者联系管理员', null)
       }
+
+      // 判断地址栏是否带参，带参则直接跳转到聊天页面
+      if (!isEmpty(getQueryString('sellerID'))) {
+        // eslint-disable-next-line no-unused-vars
+        let param = {
+          params: {
+            id: getQueryString('sellerID')
+          }
+        }
+        getByUserID(param).then(data => {
+          if (data.code === 200) {
+            let user = data.data.user
+            this.$store.dispatch('initChatUser', user)
+            this.$f7.views.main.router.load({url: '/message'})
+          }
+        })
+      }
+
+      // Mqtt 连接
+      // eslint-disable-next-line new-cap,camelcase
+      let mqtt_client = new mqtt(this.$f7, 'goods' + this.user.userId)
+      let mqttClinet = mqtt_client.getMqtt()
+      mqttClinet.onMessageArrived = (e) => {
+        console.log('Mqtt接收的消息', e.payloadString)
+        let mqMessage = JSON.parse(e.payloadString)
+        console.log('mqMessage', mqMessage)
+        this.activeTitle = mqMessage.title
+        this.activeContent = mqMessage.content
+        this.activeImage = mqMessage.activeImage
+        this.activeDate = mqMessage.activeDate
+        this.activeCount = this.activeCount + 1
+        this.activeCountShow = true
+        this.activeCreatTime = this.getDateDiff(mqMessage.activeCreatTime, new Date(), 1)
+        sendNotification1(this.activeTitle, this.activeContent, this.activeImage, this.activeCreatTime)
+        console.log('this.activeTitle', this.activeTitle)
+      }
+
       this.$store.dispatch('initWebsocket', webSocket)
+      this.$store.dispatch('initMqtt', mqttClinet)
+      this.getNewActivity()
       this.getContacts()
     },
     getContacts () { // 获得用户通讯录
@@ -102,6 +168,7 @@ export default {
       // eslint-disable-next-line no-unused-vars
       let param = {
         params: {
+          userId: this.user.userId,
           param: null,
           pageInfo: {
             pageNum: 1,
@@ -112,38 +179,126 @@ export default {
       getUserList(param).then(data => {
         if (data.code === 200) {
           this.$f7.hideIndicator()
-          this.contacts = groupBy(data.data.list, 'header')
+          this.contacts = groupBy(data.data, 'header')
         } else {
           this.$f7.alert(data.msg, '校园拍拍')
         }
       })
     },
-    getActiveNoticeMedia (item) {
-      return "<img src='http://47.107.228.169:8099/15/1/ceb19410f3724e5ab63d7a13340ce2f0.jpg' width='44'/>"
+    getNewActivity () { // 获得最新活动信息
+      // eslint-disable-next-line no-extend-native
+      Date.prototype.format = function (fmt) {
+        var o = {
+          'M+': this.getMonth() + 1, // 月份
+          'd+': this.getDate(), // 日
+          'h+': this.getHours(), // 小时
+          'm+': this.getMinutes(), // 分
+          's+': this.getSeconds(), // 秒
+          'q+': Math.floor((this.getMonth() + 3) / 3), // 季度
+          'S': this.getMilliseconds() // 毫秒
+        }
+        if (/(y+)/.test(fmt)) {
+          fmt = fmt.replace(RegExp.$1, (this.getFullYear() + '').substr(4 - RegExp.$1.length))
+        }
+        for (var k in o) {
+          if (new RegExp('(' + k + ')').test(fmt)) {
+            fmt = fmt.replace(RegExp.$1, (RegExp.$1.length === 1) ? (o[k]) : (('00' + o[k]).substr(('' + o[k]).length)))
+          }
+        }
+        return fmt
+      }
+
+      getNewActivity().then(data => {
+        if (data.code === 200) {
+          this.activeTitle = data.data.activeName
+          this.activeContent = data.data.activeDescription
+          this.activeImage = data.data.activeUrl
+          let ast = new Date(data.data.activeStartTime).format('yyyy-MM-dd hh:mm:ss')
+          let aed = new Date(data.data.activeEndTime).format('yyyy-MM-dd hh:mm:ss')
+          let apt = new Date(data.data.activePublishTime).format('yyyy-MM-dd hh:mm:ss')
+          this.activeDate = ast + '--' + aed
+          this.activeCountShow = false
+          this.activeCreatTime = this.getDateDiff(apt, new Date(), 1)
+        } else {
+          this.$f7.alert(data.msg, '校园拍拍')
+        }
+      })
     },
-    getActiveNoticeTitle (item) {
-      return "<div class='item-title list-title-text'>通知助手</div>"
-    },
-    getActiveNoticeSubtitle (item) {
-      return "<div class='item-subtitle list-item-context'>学霸都在读什么书？</div>"
-    },
-    getActiveNoticeTime (item) {
-      return "<div class='item-subtitle list-item-context'>21小时之前</div>"
+    getDateDiff (starttime, endtime, type) {
+      if (starttime == null || endtime == null) {
+        return ''
+      }
+      var ed = endtime
+      var sd = starttime
+      if (type === 1) {
+        ed = ed + ':00'
+      } else if (type === 2) {
+        sd = sd + ':00'
+      }
+      var startTime = new Date(sd)
+      var endTime = new Date(ed)
+      // eslint-disable-next-line no-unused-vars
+      var result = ''
+
+      var date3 = endTime.getTime() - startTime.getTime() // 时间差的毫秒数
+
+      // 计算出相差天数
+      var days = Math.floor(date3 / (24 * 3600 * 1000))
+
+      result += days > 0 ? days : '0'
+      if (days > 0) {
+        return days + ' 天之前'
+      }
+      // 计算出小时数
+      var leave1 = date3 % (24 * 3600 * 1000) // 计算天数后剩余的毫秒数
+      var hours = Math.floor(leave1 / (3600 * 1000))
+
+      result += hours > 0 ? hours : '0'
+      if (hours > 0) {
+        return hours + ' 小时之前'
+      }
+
+      // 计算相差分钟数
+      var leave2 = leave1 % (3600 * 1000) // 计算小时数后剩余的毫秒数
+      var minutes = Math.floor(leave2 / (60 * 1000))
+
+      result += minutes > 0 ? minutes : '0'
+      if (minutes > 0) {
+        return days + ' 分钟之前'
+      }
+
+      // 计算相差秒数
+      var leave3 = leave2 % (60 * 1000) // 计算分钟数后剩余的毫秒数
+      var seconds = Math.round(leave3 / 1000)
+
+      console.log(result)
+      return seconds > 0 ? seconds + ' 秒之前' : '刚刚'
     },
     getContactsMedia (item) {
-      return "<img src='" + item + "' width='44'/>"
+      return '<img src=\'' + item + '\' width=\'44\'/>'
     },
     getContactsTitle (item) {
-      return "<div class='item-title list-title-text'>" + item + " <div class='list-tile-time'>11:21</div></div> "
+      return '<div class=\'item-title list-title-text\'>' + item + ' <div class=\'list-tile-time\'>11:21</div></div> '
     },
     getContactsSubtitle (item) {
-      return "<div class='item-subtitle list-item-context'>学霸都在读什么书？</div>"
+      return '<div class=\'item-subtitle list-item-context\'>学霸都在读什么书？</div>'
     },
     toMessage () {
       return '/message'
     },
     setChatUser (item) {
       this.$store.dispatch('initChatUser', item)
+    },
+    notificationBox () {
+      let notification = this.$f7.notification.create({
+        icon: '<i class="icon demo-icon">7</i>',
+        title: 'Framework7',
+        titleRightText: 'now',
+        subtitle: 'Notification with close on click',
+        text: 'Click me to close',
+        closeOnClick: true
+      })
+      notification.open()
     }
   }
 }

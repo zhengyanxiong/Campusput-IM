@@ -32,8 +32,15 @@ function toAndroidActivity (fragement) {
   }
 }
 
+// H5调用Android消息通知
+// eslint-disable-next-line no-unused-vars
+function sendNotification1 (activeTitle, activeContent, activeImage, activeCreatTime) {
+  window.sendNotification1Obj.sendNotification1(activeTitle, activeContent, activeImage, activeCreatTime)
+}
+
 export {
   appUploadPic,
   uploadAvatarIsCompleted,
-  appPicUploadUrl
+  appPicUploadUrl,
+  sendNotification1
 }

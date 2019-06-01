@@ -1,10 +1,28 @@
 import browserMD5File from 'browser-md5-file'
+
+/**
+ * 判读字符串是否为空
+ * @param value
+ * @returns {boolean}
+ */
 export function isEmpty (value) {
   if (value === '' || value === null || value === undefined || value === {} || value === 'undefined') {
     return true
   }
   return false
 }
+
+/**
+ * 获取地址栏参数
+ * @param name
+ * @returns {string|null}
+ */
+export function getQueryString (name) {
+  var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)')
+  var r = window.location.search.substr(1).match(reg)
+  if (r != null) return unescape(r[2]); return null
+}
+
 export function formatDate (date, fmt) {
   if (/(y+)/.test(fmt)) {
     fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length))

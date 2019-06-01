@@ -1,9 +1,9 @@
 <template>
   <f7-page pull-to-refresh @ptr:refresh="onRefresh" toolbar-fixed navbar-fixed>
-    <audio id="audio" preload="auto" controls loop v-show="false">
-      <source src="../assets/634.wav" type="audio/ogg" />
+    <audio id="audio" preload="auto" controls loop v-show="true" style="width: 0px;height: 0px;">
+      <source src="../assets/634.wav" type="audio/ogg" v-show="true"/>
     </audio>
-    <f7-navbar :title="chatUser.username" back-link="返回" sliding></f7-navbar>
+    <f7-navbar :title="chatUser.username" back-link="返回" sliding @click="backHome()"></f7-navbar>
 
     <f7-messages :init="true" :scrollMessages="scrollAuto" ref="f7messages">
     </f7-messages>
@@ -29,7 +29,7 @@ import {mapState} from 'vuex'
 import {appUploadPic, uploadAvatarIsCompleted, appPicUploadUrl} from '../util/app'
 import singleChat from '../websocket/msgObj'
 import {saveMessage, getMessage} from '../api/api'
-import {isEmpty, formatDate} from '../util/utils'
+import {isEmpty, formatDate, getQueryString} from '../util/utils'
 import forEach from 'lodash/forEach'
 import $ from 'jquery'
 export default {
@@ -43,6 +43,7 @@ export default {
   },
   data () {
     return {
+      flag: false,
       pageNum: 1,
       pages: null,
       scrollAuto: true,
@@ -135,7 +136,6 @@ export default {
       }
       console.log('this value', this)
       if (this.chatUser.userId === this.user.userId) {
-        console.log('自己呀')
         // 自己的聊天窗口
         if (type === 'img') {
           this.$refs.f7messages.appendMessage(this.generateImgMessage("<img src='" + this.uploadImgUrl + "' class='message-img'>", this.user, 'sent'))
@@ -321,6 +321,11 @@ export default {
         }
       }
       clearTimeout(timeOut)
+    },
+    backHome () {
+      if (!isEmpty(getQueryString('sellerID'))) {
+        window.location.href = '127.0.0.1:3000' // TODO 设置聊天地址页面
+      }
     }
   },
   filters: {

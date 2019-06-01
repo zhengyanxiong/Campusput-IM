@@ -9,6 +9,9 @@ export function initChatUser ({commit}, chatUser) {
 export function initWebsocket ({commit}, websocket) {
   commit(types.INIT_WEBSOCKET, websocket)
 }
+export function initMqtt ({commit}, mqtt) {
+  commit(types.INIT_MQTT, mqtt)
+}
 export function initUserinfo ({commit}, userinfo) {
   commit(types.INIT_USERINFO, userinfo)
 }

@@ -10,6 +10,9 @@ export default {
   [types.INIT_WEBSOCKET] (state, websocket) {
     Vue.set(state, 'websocket', websocket)
   },
+  [types.INIT_MQTT] (state, mqtt) {
+    Vue.set(state, 'mqtt', mqtt)
+  },
   [types.INIT_USERINFO] (state, userinfo) {
     Vue.set(state, 'userinfo', userinfo)
   }

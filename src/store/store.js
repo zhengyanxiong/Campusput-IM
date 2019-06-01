@@ -8,6 +8,7 @@ const state = {
   user: {},
   chatUser: {},
   websocket: {},
+  mqtt: {},
   userinfo: {}
 }
 

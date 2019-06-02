@@ -35,12 +35,18 @@ function toAndroidActivity (fragement) {
 // H5调用Android消息通知
 // eslint-disable-next-line no-unused-vars
 function sendNotification1 (activeTitle, activeContent, activeImage, activeCreatTime) {
-  window.sendNotification1Obj.sendNotification1(activeTitle, activeContent, activeImage, activeCreatTime)
+  window.sendNotification1Obj.sendNotification1(activeTitle, activeContent, activeImage, activeCreatTime, '')
+}
+
+// Android调用该js，vue重写该方法，跳转到聊天的窗口
+// eslint-disable-next-line no-unused-vars
+function jumpToChart (userID) {
+  window.jumpToChart(userID)
 }
 
 export {
   appUploadPic,
-  uploadAvatarIsCompleted,
+  jumpToChart,
   appPicUploadUrl,
   sendNotification1
 }

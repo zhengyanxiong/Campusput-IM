@@ -26,7 +26,7 @@
 <script>
 import {mapState} from 'vuex'
 // eslint-disable-next-line no-unused-vars
-import {appUploadPic, uploadAvatarIsCompleted, appPicUploadUrl} from '../util/app'
+import {appUploadPic, appPicUploadUrl, sendNotification1} from '../util/app'
 import singleChat from '../websocket/msgObj'
 import {saveMessage, getMessage} from '../api/api'
 import {isEmpty, formatDate, getQueryString} from '../util/utils'
@@ -79,11 +79,18 @@ export default {
           })
         }
       } else if (result.code === 101) {
-        _self.$f7.alert(null, '有新的消息了')
-        _self.play()
         // 接收到消息
         let message = result.data
         let content = message.message
+        /* let nowDate = (function () {
+          let now = new Date()
+          let hours = now.getHours()
+          let minutes = now.getMinutes()
+          let second = now.getSeconds()
+          return hours + ':' + minutes + ':' + second
+        })()
+        sendNotification1(_self.chatUser.username, content, _self.chatUser.headImag, nowDate) */
+        _self.play()
         _self.scrollAuto = true
         if (message.msgType === 1) {
           _self.$refs.f7messages.appendMessage(_self.generateMessage(content, _self.chatUser, 'received'))
@@ -109,6 +116,7 @@ export default {
       appUploadPic('rr')
     },
     uploadAvatarIsCompleted (url) {
+      console.log('ss接收到的图片：' + url)
       this.uploadImgUrl = url
       this.content = url
       this.onSubmit('img')

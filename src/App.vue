@@ -37,7 +37,7 @@
               <f7-list-item v-for="item in group"
                             :media="getContactsMedia(item.user.headImag)"
                             :title="getContactsTitle(item.user.username)"
-                            :subtitle="getContactsSubtitle(1)"
+                            :subtitle="getContactsSubtitle(item.schoolName == null ? '该用户暂未认证学校' : item.schoolName)"
                             :link="toMessage()"
                             @click="setChatUser(item.user)">
               </f7-list-item>
@@ -58,6 +58,7 @@ import socket from './websocket/socket'
 import mqtt from './mqtt/mqtt'
 import {getByToken, getByUserID, getUserList, getNewActivity} from './api/api'
 import {isEmpty, getQueryString} from '@/util/utils'
+// eslint-disable-next-line no-unused-vars
 import {sendNotification1} from './util/app'
 import {mapState} from 'vuex'
 import {groupBy} from 'lodash'
@@ -73,7 +74,8 @@ export default {
       activeCount: null,
       activeCountShow: false,
       activeCreatTime: '',
-      activeImage: require('./assets/notice.png')
+      activeImage: require('./assets/notice.png'),
+      androidUserId: null
     }
   },
   computed: {
@@ -84,11 +86,13 @@ export default {
     })
   },
   mounted () {
-    this.$nextTick(() => {
-      this.$f7.showIndicator()
+    let _self = this
+    window.jumpToPage = _self.jumpToPage
+    _self.$nextTick(() => {
+      _self.$f7.showIndicator()
       if (isEmpty(Cookies.get('app_member_token'))) {
-        this.$f7.hideIndicator()
-        this.$f7.alert('请登陆', null)
+        _self.$f7.hideIndicator()
+        _self.$f7.alert('请登陆', null)
       } else {
         axiosIns.defaults.headers.common['token'] = Cookies.get('Authorization')
         // eslint-disable-next-line no-unused-vars
@@ -98,13 +102,13 @@ export default {
           }
         }
         getByToken(param).then(data => {
-          this.$f7.hideIndicator()
+          _self.$f7.hideIndicator()
           if (data.code === 200) {
             let user = data.data
-            this.$store.dispatch('initUser', user)
-            this.initApp()
+            _self.$store.dispatch('initUser', user)
+            _self.initApp()
           } else {
-            this.$f7.alert('用户未登陆，请登陆', null)
+            _self.$f7.alert('用户未登陆，请登陆', null)
           }
         })
       }
@@ -140,8 +144,9 @@ export default {
       }
 
       // Mqtt 连接
+      let dtate = new Date()
       // eslint-disable-next-line new-cap,camelcase
-      let mqtt_client = new mqtt(this.$f7, 'goods' + this.user.userId)
+      let mqtt_client = new mqtt(this.$f7, 'goods' + this.user.userId + dtate.getDay() + dtate.getTime())
       let mqttClinet = mqtt_client.getMqtt()
       mqttClinet.onMessageArrived = (e) => {
         console.log('Mqtt接收的消息', e.payloadString)
@@ -162,6 +167,14 @@ export default {
       this.$store.dispatch('initMqtt', mqttClinet)
       this.getNewActivity()
       this.getContacts()
+
+      if (!isEmpty(this.androidUserId)) {
+        window.location.href = 'http://192.168.1.4:9999?sellerID=' + this.androidUserId // TODO 设置聊天地址页面
+      }
+    },
+    jumpToPage (userID) {
+      console.log('接收到的用户ID是：' + userID)
+      this.androidUserId = userID
     },
     getContacts () { // 获得用户通讯录
       this.$f7.showIndicator()
@@ -247,7 +260,7 @@ export default {
 
       result += days > 0 ? days : '0'
       if (days > 0) {
-        return days + ' 天之前'
+        return days + ' 天前'
       }
       // 计算出小时数
       var leave1 = date3 % (24 * 3600 * 1000) // 计算天数后剩余的毫秒数
@@ -255,7 +268,7 @@ export default {
 
       result += hours > 0 ? hours : '0'
       if (hours > 0) {
-        return hours + ' 小时之前'
+        return hours + ' 小时前'
       }
 
       // 计算相差分钟数
@@ -264,7 +277,7 @@ export default {
 
       result += minutes > 0 ? minutes : '0'
       if (minutes > 0) {
-        return days + ' 分钟之前'
+        return days + ' 分钟前'
       }
 
       // 计算相差秒数
@@ -272,33 +285,22 @@ export default {
       var seconds = Math.round(leave3 / 1000)
 
       console.log(result)
-      return seconds > 0 ? seconds + ' 秒之前' : '刚刚'
+      return seconds > 0 ? seconds + ' 秒前' : '刚刚'
     },
     getContactsMedia (item) {
       return '<img src=\'' + item + '\' width=\'44\'/>'
     },
     getContactsTitle (item) {
-      return '<div class=\'item-title list-title-text\'>' + item + ' <div class=\'list-tile-time\'>11:21</div></div> '
+      return '<div class=\'item-title list-title-text\'>' + item + ' </div> '
     },
     getContactsSubtitle (item) {
-      return '<div class=\'item-subtitle list-item-context\'>学霸都在读什么书？</div>'
+      return '<div class=\'item-subtitle list-item-context\'> ' + item + '</div>'
     },
     toMessage () {
       return '/message'
     },
     setChatUser (item) {
       this.$store.dispatch('initChatUser', item)
-    },
-    notificationBox () {
-      let notification = this.$f7.notification.create({
-        icon: '<i class="icon demo-icon">7</i>',
-        title: 'Framework7',
-        titleRightText: 'now',
-        subtitle: 'Notification with close on click',
-        text: 'Click me to close',
-        closeOnClick: true
-      })
-      notification.open()
     }
   }
 }

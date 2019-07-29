@@ -3,7 +3,7 @@
     <audio id="audio" preload="auto" controls loop v-show="true" style="width: 0px;height: 0px;">
       <source src="../assets/634.wav" type="audio/ogg" v-show="true"/>
     </audio>
-    <f7-navbar :title="chatUser.username" back-link="返回" sliding @click="backHome()"></f7-navbar>
+    <f7-navbar :title="chatUser.username == null ? chatUser.studentId : chatUser.username" back-link="返回" sliding @click="backHome"></f7-navbar>
 
     <f7-messages :init="true" :scrollMessages="scrollAuto" ref="f7messages">
     </f7-messages>
@@ -332,7 +332,7 @@ export default {
     },
     backHome () {
       if (!isEmpty(getQueryString('sellerID'))) {
-        window.location.href = '127.0.0.1:3000' // TODO 设置聊天地址页面
+        window.location.href = 'http://192.168.43.73:9999' // TODO 设置聊天地址页面
       }
     }
   },

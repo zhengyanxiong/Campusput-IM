@@ -36,7 +36,7 @@
             <f7-list-group v-for="group in contacts">
               <f7-list-item v-for="item in group"
                             :media="getContactsMedia(item.user.headImag)"
-                            :title="getContactsTitle(item.user.username)"
+                            :title="getContactsTitle(item.user.username == null ? item.user.studentId : item.user.username)"
                             :subtitle="getContactsSubtitle(item.schoolName == null ? '该用户暂未认证学校' : item.schoolName)"
                             :link="toMessage()"
                             @click="setChatUser(item.user)">
@@ -145,16 +145,20 @@ export default {
 
       // Mqtt 连接
       let dtate = new Date()
+      console.log('this.user.userId', this.user.userId)
+
+      let fUserID = this.user.userId
       // eslint-disable-next-line new-cap,camelcase
-      let mqtt_client = new mqtt(this.$f7, 'goods' + this.user.userId + dtate.getDay() + dtate.getTime())
+      let mqtt_client = new mqtt(this.$f7, fUserID, 'MESSAGE' + fUserID + dtate.getDay() + dtate.getTime())
       let mqttClinet = mqtt_client.getMqtt()
       mqttClinet.onMessageArrived = (e) => {
         console.log('Mqtt接收的消息', e.payloadString)
         let mqMessage = JSON.parse(e.payloadString)
+        let Base64 = require('js-base64').Base64
         console.log('mqMessage', mqMessage)
-        this.activeTitle = mqMessage.title
-        this.activeContent = mqMessage.content
-        this.activeImage = mqMessage.activeImage
+        this.activeTitle = Base64.decode(mqMessage.title)
+        this.activeContent = Base64.decode(mqMessage.content)
+        this.activeImage = isEmpty(mqMessage.activeImage) ? require('./assets/notice.png') : mqMessage.activeImage
         this.activeDate = mqMessage.activeDate
         this.activeCount = this.activeCount + 1
         this.activeCountShow = true
@@ -169,7 +173,7 @@ export default {
       this.getContacts()
 
       if (!isEmpty(this.androidUserId)) {
-        window.location.href = 'http://192.168.1.4:9999?sellerID=' + this.androidUserId // TODO 设置聊天地址页面
+        window.location.href = 'http://192.168.43.73:9999?sellerID=' + this.androidUserId // TODO 设置聊天地址页面
       }
     },
     jumpToPage (userID) {

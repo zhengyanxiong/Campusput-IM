@@ -1,6 +1,6 @@
 # campusput-im
 
-> A Vue.js project for Campusput IM
+> Campusput IM是一个使用Vue和framework7开发的H5在线聊天室，可独立集成与系统中
 
 ## Build Setup
 

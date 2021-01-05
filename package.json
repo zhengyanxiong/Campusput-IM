@@ -14,7 +14,7 @@
     "build": "node build/build.js"
   },
   "dependencies": {
-    "axios": "^0.15.3",
+    "axios": "^0.21.1",
     "browser-md5-file": "^1.0.0",
     "cookies-js": "^1.2.3",
     "cropperjs": "^1.1.3",
